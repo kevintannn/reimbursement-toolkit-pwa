@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx prisma *)",
+      "Bash(node prisma/seed.mjs)",
+      "Bash(npm ls *)",
+      "Bash(npm run *)",
+      "PowerShell($conns = Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue; if \\($conns\\) { $conns | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object { try { Stop-Process -Id $_ -Force; Write-Output \"killed PID $_\" } catch {} } } else { Write-Output \"nothing on 3000\" })",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/)",
+      "mcp__claude-in-chrome__navigate",
+      "mcp__claude-in-chrome__tabs_context_mcp",
+      "Bash(curl -s -o /dev/null http://localhost:3000/)",
+      "Bash(curl -s -o /dev/null http://localhost:3000/employees)",
+      "Bash(curl -s -o /dev/null http://localhost:3000/meal)",
+      "PowerShell($conns = Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue; if \\($conns\\) { $conns | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object { try { Stop-Process -Id $_ -Force; Write-Output \"stopped PID $_\" } catch {} } } else { Write-Output \"nothing on 3000\" })",
+      "Bash(git config *)",
+      "Bash(echo \"user.name: $\\(git config user.name || echo unset\\)\")",
+      "Bash(echo \"user.email: $\\(git config user.email || echo unset\\)\")",
+      "Bash(curl -s http://localhost:3000/db)",
+      "Bash(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/db)",
+      "Bash(echo \"HTTP: $\\(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/db\\)\")",
+      "Read(//tmp/**)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000/employees)",
+      "PowerShell($c = Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue; if \\($c\\) { $c | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object { try { Stop-Process -Id $_ -Force; Write-Output \"stopped PID $_\" } catch {} } } else { Write-Output \"nothing on 3000\" })",
+      "Bash(rm -rf .next)",
+      "Bash([ -f \"$f\" ])",
+      "Bash(echo \"removed launch.json\")",
+      "Bash(echo \"already gone\")",
+      "Bash(git init *)",
+      "Bash(git add *)",
+      "Bash(git -c user.name=\"Kevin Tan\" -c user.email=\"kvnt20@gmail.com\" commit -m \"Initial commit: Reimbursement Toolkit PWA\")"
+    ]
+  }
+}
