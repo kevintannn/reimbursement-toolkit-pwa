@@ -44,7 +44,7 @@ export function ExpenseEntryPage() {
       <div className="p-4 space-y-5 max-w-lg mx-auto">
         {saved && (
           <div className="bg-green-50 border border-green-200 text-green-700 rounded-lg px-4 py-3 text-sm font-medium">
-            Expense saved!
+            Expense saveds!
           </div>
         )}
 
