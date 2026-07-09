@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { PageHeader } from '../components/common/PageHeader'
 import { useCategories, addCategory, deleteCategory } from '../hooks/useCategories'
 import { exportBackup, importBackup } from '../services/backup.service'
+import { seedTestData, clearSeedData } from '../services/seed.service'
 import type { Category } from '../types/category'
 
 export function SettingsPage() {
@@ -13,6 +14,8 @@ export function SettingsPage() {
   const [importError, setImportError] = useState<string | null>(null)
   const [importSuccess, setImportSuccess] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [seeding, setSeeding] = useState(false)
+  const [seedMsg, setSeedMsg] = useState<string | null>(null)
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault()
@@ -44,6 +47,28 @@ export function SettingsPage() {
     } finally {
       setImporting(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  async function handleSeed() {
+    setSeeding(true)
+    setSeedMsg(null)
+    try {
+      const { batches, expenses } = await seedTestData()
+      setSeedMsg(`Seeded ${expenses} expenses across ${batches} batches.`)
+    } finally {
+      setSeeding(false)
+    }
+  }
+
+  async function handleClearSeed() {
+    setSeeding(true)
+    setSeedMsg(null)
+    try {
+      const removed = await clearSeedData()
+      setSeedMsg(`Removed ${removed} seeded records.`)
+    } finally {
+      setSeeding(false)
     }
   }
 
@@ -153,6 +178,32 @@ export function SettingsPage() {
                 <p className="mt-2 text-xs text-green-600">Backup imported successfully.</p>
               )}
             </div>
+          </div>
+        </section>
+
+        <section>
+          <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-3">Testing</h2>
+          <div className="bg-white rounded-xl border border-slate-200 px-4 py-3">
+            <p className="text-sm text-slate-600 mb-3">
+              Add 100 sample expenses across 3 batches (one per recent month) to try out the app. Seeded data is tagged and can be removed without touching your real data.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={handleSeed}
+                disabled={seeding}
+                className="flex-1 py-2.5 bg-slate-700 text-white rounded-lg text-sm font-medium hover:bg-slate-800 disabled:opacity-50"
+              >
+                {seeding ? 'Working…' : 'Seed test data'}
+              </button>
+              <button
+                onClick={handleClearSeed}
+                disabled={seeding}
+                className="flex-1 py-2.5 border border-red-300 text-red-600 rounded-lg text-sm font-medium hover:bg-red-50 disabled:opacity-50"
+              >
+                Clear seed data
+              </button>
+            </div>
+            {seedMsg && <p className="mt-2 text-xs text-green-600">{seedMsg}</p>}
           </div>
         </section>
 

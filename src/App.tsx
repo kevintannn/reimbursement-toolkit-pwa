@@ -11,6 +11,7 @@ const ExpenseEntryPage = lazy(() => import('./pages/ExpenseEntryPage').then(m =>
 const ExpenseListPage  = lazy(() => import('./pages/ExpenseListPage').then(m  => ({ default: m.ExpenseListPage })))
 const BatchListPage    = lazy(() => import('./pages/BatchListPage').then(m    => ({ default: m.BatchListPage })))
 const BatchDetailPage  = lazy(() => import('./pages/BatchDetailPage').then(m  => ({ default: m.BatchDetailPage })))
+const InsightsPage     = lazy(() => import('./pages/InsightsPage').then(m     => ({ default: m.InsightsPage })))
 const SettingsPage     = lazy(() => import('./pages/SettingsPage').then(m     => ({ default: m.SettingsPage })))
 
 function PageFallback() {
@@ -32,6 +33,7 @@ export default function App() {
             <Route path="batches"          element={<BatchListPage />} />
             <Route path="batches/:id"      element={<BatchDetailPage />} />
             <Route path="expenses"         element={<ExpenseListPage />} />
+            <Route path="insights"         element={<InsightsPage />} />
             <Route path="settings"         element={<SettingsPage />} />
           </Route>
         </Routes>
