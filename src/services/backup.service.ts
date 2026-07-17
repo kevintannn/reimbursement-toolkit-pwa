@@ -25,7 +25,14 @@ export interface BackupData {
   settings: Setting[]
 }
 
-export async function exportBackup(): Promise<void> {
+export interface PreparedBackup {
+  blob: Blob
+  filename: string
+}
+
+// Reads + serializes everything. Kept separate from saving so the UI can do this
+// slow work first and then trigger the actual save from a fresh user tap (iOS).
+export async function buildBackup(): Promise<PreparedBackup> {
   const [expenses, batches, categories, settings] = await Promise.all([
     db.expenses.toArray(),
     db.batches.toArray(),
@@ -55,15 +62,52 @@ export async function exportBackup(): Promise<void> {
     settings,
   }
 
-  const json = JSON.stringify(backup, null, 2)
-  const blob = new Blob([json], { type: 'application/json' })
+  const json = JSON.stringify(backup)
+  const date = new Date().toISOString().slice(0, 10)
+  return {
+    blob: new Blob([json], { type: 'application/json' }),
+    filename: `reimburse-backup-${date}.json`,
+  }
+}
+
+// True when the browser refused a share because the user gesture had already
+// expired (iOS Safari does this once any await runs before share()).
+export function isActivationError(err: unknown): boolean {
+  const name = (err as Error)?.name
+  return name === 'NotAllowedError' || name === 'InvalidStateError'
+}
+
+// Saves a prepared backup to the device.
+// iOS PWAs ignore <a download> entirely — there is no downloads folder — so the
+// Web Share sheet ("Save to Files") is the only route. Desktop falls back to an
+// anchor, which must be in the DOM and must outlive the click before revoking.
+export async function saveBackupFile({ blob, filename }: PreparedBackup): Promise<void> {
+  const file = new File([blob], filename, { type: 'application/json' })
+
+  if (navigator.canShare?.({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: filename })
+      return
+    } catch (err) {
+      if ((err as Error)?.name === 'AbortError') return // user dismissed the sheet
+      if (isActivationError(err)) throw err             // caller re-tries from a fresh tap
+      // any other share failure → fall through to the anchor path
+    }
+  }
+
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
-  const date = new Date().toISOString().slice(0, 10)
   a.href = url
-  a.download = `reimburse-backup-${date}.json`
+  a.download = filename
+  a.style.display = 'none'
+  document.body.appendChild(a)
   a.click()
-  URL.revokeObjectURL(url)
+  document.body.removeChild(a)
+  setTimeout(() => URL.revokeObjectURL(url), 10_000)
+}
+
+export async function exportBackup(): Promise<void> {
+  await saveBackupFile(await buildBackup())
 }
 
 export async function importBackup(file: File, mode: 'merge' | 'replace'): Promise<void> {

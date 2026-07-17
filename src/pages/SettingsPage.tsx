@@ -1,7 +1,13 @@
 import { useRef, useState } from 'react'
 import { PageHeader } from '../components/common/PageHeader'
 import { useCategories, addCategory, deleteCategory } from '../hooks/useCategories'
-import { exportBackup, importBackup } from '../services/backup.service'
+import {
+  buildBackup,
+  saveBackupFile,
+  isActivationError,
+  importBackup,
+  type PreparedBackup,
+} from '../services/backup.service'
 import { seedTestData, clearSeedData } from '../services/seed.service'
 import type { Category } from '../types/category'
 
@@ -9,6 +15,8 @@ export function SettingsPage() {
   const { categories } = useCategories()
   const [newCat, setNewCat] = useState('')
   const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
+  const [pendingBackup, setPendingBackup] = useState<PreparedBackup | null>(null)
   const [importing, setImporting] = useState(false)
   const [importMode, setImportMode] = useState<'merge' | 'replace'>('merge')
   const [importError, setImportError] = useState<string | null>(null)
@@ -26,10 +34,32 @@ export function SettingsPage() {
 
   async function handleExport() {
     setExporting(true)
+    setExportError(null)
+    setPendingBackup(null)
     try {
-      await exportBackup()
+      const prepared = await buildBackup()
+      try {
+        await saveBackupFile(prepared)
+      } catch (err) {
+        // iOS drops the user gesture while the backup is being built. Keep the
+        // finished file around so the next tap can open the share sheet instantly.
+        if (!isActivationError(err)) throw err
+        setPendingBackup(prepared)
+      }
+    } catch (err) {
+      setExportError(err instanceof Error ? err.message : 'Export failed')
     } finally {
       setExporting(false)
+    }
+  }
+
+  async function handleSavePending() {
+    if (!pendingBackup) return
+    try {
+      await saveBackupFile(pendingBackup)
+      setPendingBackup(null)
+    } catch (err) {
+      setExportError(err instanceof Error ? err.message : 'Save failed')
     }
   }
 
@@ -129,8 +159,24 @@ export function SettingsPage() {
                 disabled={exporting}
                 className="w-full py-2.5 bg-blue-700 text-white rounded-lg text-sm font-medium hover:bg-blue-800 disabled:opacity-50"
               >
-                {exporting ? 'Exporting…' : 'Export Backup'}
+                {exporting ? 'Preparing…' : 'Export Backup'}
               </button>
+
+              {pendingBackup && (
+                <div className="mt-2">
+                  <button
+                    onClick={handleSavePending}
+                    className="w-full py-2.5 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700"
+                  >
+                    Save backup ({Math.round(pendingBackup.blob.size / 1024)} KB)
+                  </button>
+                  <p className="mt-1 text-xs text-slate-400">
+                    Your backup is ready — tap to choose “Save to Files”.
+                  </p>
+                </div>
+              )}
+
+              {exportError && <p className="mt-2 text-xs text-red-600">{exportError}</p>}
             </div>
 
             <div className="px-4 py-3">
