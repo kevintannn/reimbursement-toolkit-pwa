@@ -8,7 +8,7 @@ import { del, get, list, put } from '@vercel/blob'
 import { createHash, timingSafeEqual } from 'node:crypto'
 
 const PREFIX = 'backups/'
-const KEEP_LATEST = 30
+const KEEP_LATEST = 10
 const MAX_BYTES = 4 * 1024 * 1024 // Vercel rejects function bodies above 4.5 MB anyway
 
 export interface CloudBackupInfo {

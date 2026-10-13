@@ -8,7 +8,7 @@ import {
   WrongPasscodeError,
   type CloudBackup,
 } from '../../services/cloud.service'
-import { importBackupText, saveBackupFile } from '../../services/backup.service'
+import { describeSaveError, importBackupText, saveBackupFile } from '../../services/backup.service'
 
 const pad = (n: number) => String(n).padStart(2, '0')
 
@@ -91,7 +91,11 @@ export function CloudBackupSection() {
   const handleDownload = (b: CloudBackup) =>
     run(b.pathname, async () => {
       const text = await fetchCloudBackup(passcode, b.pathname)
-      await saveBackupFile({ blob: new Blob([text], { type: 'application/json' }), filename: fileNameFor(b) })
+      try {
+        await saveBackupFile({ blob: new Blob([text], { type: 'application/json' }), filename: fileNameFor(b) })
+      } catch (err) {
+        throw new Error(describeSaveError(err), { cause: err })
+      }
     })
 
   function handleRestore(b: CloudBackup) {

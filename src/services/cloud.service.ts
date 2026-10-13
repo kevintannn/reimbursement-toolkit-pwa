@@ -69,6 +69,26 @@ export async function uploadCloudBackup(passcode: string): Promise<CloudBackup> 
   return res.json()
 }
 
+export type AutoBackupResult =
+  | { status: 'uploaded'; size: number }
+  | { status: 'offline' }
+  | { status: 'no-passcode' }
+  | { status: 'failed'; message: string }
+
+// Called after a batch is generated. Never throws — reports what happened so the
+// caller can show it without affecting generation itself.
+export async function autoBackupToCloud(): Promise<AutoBackupResult> {
+  const passcode = getSavedPasscode()
+  if (!passcode) return { status: 'no-passcode' }
+  if (!navigator.onLine) return { status: 'offline' }
+  try {
+    const info = await uploadCloudBackup(passcode)
+    return { status: 'uploaded', size: info.size }
+  } catch (err) {
+    return { status: 'failed', message: err instanceof Error ? err.message : 'Upload failed' }
+  }
+}
+
 export async function listCloudBackups(passcode: string): Promise<CloudBackup[]> {
   return (await call(passcode, '')).json()
 }

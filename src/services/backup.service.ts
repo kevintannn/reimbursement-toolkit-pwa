@@ -68,29 +68,37 @@ export async function buildBackup(): Promise<PreparedBackup> {
   }
 }
 
-// True when the browser refused a share because the user gesture had already
-// expired (iOS Safari does this once any await runs before share()).
-export function isActivationError(err: unknown): boolean {
-  const name = (err as Error)?.name
-  return name === 'NotAllowedError' || name === 'InvalidStateError'
+// iPhone/iPad. iPadOS reports itself as a Mac, so also check for touch.
+function isIOS(): boolean {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.userAgent.includes('Macintosh') && navigator.maxTouchPoints > 1)
 }
 
-// Saves a prepared backup to the device.
-// iOS PWAs ignore <a download> entirely — there is no downloads folder — so the
-// Web Share sheet ("Save to Files") is the only route. Desktop falls back to an
-// anchor, which must be in the DOM and must outlive the click before revoking.
-export async function saveBackupFile({ blob, filename }: PreparedBackup): Promise<void> {
-  const file = new File([blob], filename, { type: 'application/json' })
+// Turns a save failure into a message for the user. iOS refuses the share
+// sheet when any await (like a download) ran between the tap and share().
+export function describeSaveError(err: unknown): string {
+  const name = (err as Error)?.name
+  if (name === 'NotAllowedError' || name === 'InvalidStateError') {
+    return 'iPhone blocked saving this file. Download it from your PC instead.'
+  }
+  return err instanceof Error ? err.message : 'Could not save the file'
+}
 
-  if (navigator.canShare?.({ files: [file] })) {
+// Saves a backup file to the device.
+// iOS PWAs ignore <a download> — there is no downloads folder — so the Web
+// Share sheet ("Save to Files") is the only route there. Everywhere else a
+// plain download is used: desktop Chrome/Edge also support the share sheet but
+// reject it after an await, and a normal download is what's wanted anyway.
+// The anchor must be in the DOM and must outlive the click before revoking.
+export async function saveBackupFile({ blob, filename }: PreparedBackup): Promise<void> {
+  if (isIOS()) {
+    const file = new File([blob], filename, { type: 'application/json' })
     try {
       await navigator.share({ files: [file], title: filename })
-      return
     } catch (err) {
-      if ((err as Error)?.name === 'AbortError') return // user dismissed the sheet
-      if (isActivationError(err)) throw err             // caller re-tries from a fresh tap
-      // any other share failure → fall through to the anchor path
+      if ((err as Error)?.name !== 'AbortError') throw err // AbortError = user dismissed the sheet
     }
+    return
   }
 
   const url = URL.createObjectURL(blob)

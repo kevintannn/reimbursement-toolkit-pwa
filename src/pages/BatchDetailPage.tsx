@@ -5,12 +5,27 @@ import { ExpenseCard } from '../components/expense/ExpenseCard'
 import { EditExpenseModal } from '../components/expense/EditExpenseModal'
 import { useBatch, useBatches, downloadBlob } from '../hooks/useBatches'
 import { useBatchExpenses } from '../hooks/useExpenses'
-import { useGenerateBatch } from '../hooks/useGenerateBatch'
+import { useGenerateBatch, type CloudSyncState } from '../hooks/useGenerateBatch'
 import { renameBatch } from '../services/batch.service'
 import { buildCategoryTotals } from '../services/batch.service'
 import { formatRupiah } from '../utils/currency'
 import { formatDisplayDate, formatDateRange } from '../utils/date'
 import type { Expense } from '../types/expense'
+
+// Result of the automatic cloud backup that runs after each generation
+function CloudSyncNote({ state }: { state: CloudSyncState }) {
+  const note: Record<CloudSyncState['status'], [string, string] | null> = {
+    idle: null,
+    uploading: ['☁️ Backing up to cloud…', 'text-slate-400'],
+    uploaded: ['☁️ Backed up to cloud', 'text-green-600'],
+    offline: ['Offline — not backed up. It will back up next time you generate online.', 'text-amber-600'],
+    'no-passcode': ['Cloud backup is off on this device. Set a passcode in Settings to turn it on.', 'text-slate-400'],
+    failed: [`Cloud backup failed: ${state.status === 'failed' ? state.message : ''}`, 'text-red-600'],
+  }
+  const entry = note[state.status]
+  if (!entry) return null
+  return <p className={`text-xs text-center ${entry[1]}`}>{entry[0]}</p>
+}
 
 export function BatchDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -18,7 +33,7 @@ export function BatchDetailPage() {
   const { batch } = useBatch(id!)
   const { batches } = useBatches()
   const { expenses } = useBatchExpenses(id!)
-  const { generate, generating, error } = useGenerateBatch()
+  const { generate, generating, error, cloud } = useGenerateBatch()
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
 
   const [editingName, setEditingName] = useState(false)
@@ -173,6 +188,8 @@ export function BatchDetailPage() {
             {' '}· Re-generate anytime to update
           </p>
         )}
+
+        <CloudSyncNote state={cloud} />
 
         {/* Expense list */}
         <div>
