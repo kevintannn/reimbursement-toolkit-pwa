@@ -4,7 +4,7 @@ export interface Expense {
   usage: string
   amount: number        // IDR, integer
   category: string
-  receiptImage: Blob
+  receiptImage?: Blob   // absent when restored from an image-free backup on another device
   batchId: string       // always belongs to a batch
   createdAt: string     // ISO 8601
   updatedAt: string

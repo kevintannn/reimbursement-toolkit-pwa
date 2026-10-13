@@ -9,7 +9,11 @@ import {
   type PreparedBackup,
 } from '../services/backup.service'
 import { seedTestData, clearSeedData } from '../services/seed.service'
+import { CloudBackupSection } from '../components/settings/CloudBackupSection'
 import type { Category } from '../types/category'
+
+// File-based backup is hidden in favour of Cloud Backup. Flip to true to bring it back.
+const SHOW_FILE_BACKUP = false
 
 export function SettingsPage() {
   const { categories } = useCategories()
@@ -148,6 +152,9 @@ export function SettingsPage() {
           </form>
         </section>
 
+        <CloudBackupSection />
+
+        {SHOW_FILE_BACKUP && (
         <section>
           <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-3">Data Backup</h2>
 
@@ -226,6 +233,7 @@ export function SettingsPage() {
             </div>
           </div>
         </section>
+        )}
 
         <section>
           <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-3">Testing</h2>

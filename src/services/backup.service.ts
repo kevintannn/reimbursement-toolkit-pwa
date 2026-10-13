@@ -1,14 +1,16 @@
 import { db } from '../db/db'
-import { blobToDataURL } from '../utils/image'
 import { isoNow } from '../utils/date'
 import type { Expense } from '../types/expense'
 import type { Batch } from '../types/batch'
 import type { Category } from '../types/category'
 
-const BACKUP_VERSION = 1
+// v1 embedded every receipt as base64; v2 leaves images out (they stay on the
+// device that captured them). Both are accepted on import.
+const BACKUP_VERSION = 2
+const SUPPORTED_VERSIONS = [1, 2]
 
 interface SerializedExpense extends Omit<Expense, 'receiptImage'> {
-  receiptImageDataURL: string
+  receiptImageDataURL?: string // v1 only
 }
 
 // Blobs are skipped — Excel/PDF outputs are always regeneratable
@@ -40,12 +42,8 @@ export async function buildBackup(): Promise<PreparedBackup> {
     db.settings.toArray(),
   ])
 
-  // Convert receipt Blobs → base64 data URLs
-  const serializedExpenses: SerializedExpense[] = await Promise.all(
-    expenses.map(async (exp) => {
-      const { receiptImage, ...rest } = exp
-      return { ...rest, receiptImageDataURL: await blobToDataURL(receiptImage) }
-    })
+  const serializedExpenses: SerializedExpense[] = expenses.map(
+    ({ receiptImage: _img, ...rest }) => rest
   )
 
   // Strip regeneratable blobs from batches
@@ -111,23 +109,38 @@ export async function exportBackup(): Promise<void> {
 }
 
 export async function importBackup(file: File, mode: 'merge' | 'replace'): Promise<void> {
-  const text = await file.text()
-  const data: BackupData = JSON.parse(text)
+  await importBackupText(await file.text(), mode)
+}
 
-  if (data.version !== BACKUP_VERSION) {
-    throw new Error(`Unsupported backup version: ${data.version}`)
+export async function importBackupText(text: string, mode: 'merge' | 'replace'): Promise<void> {
+  let data: BackupData
+  try {
+    data = JSON.parse(text)
+  } catch {
+    throw new Error('This file is not a valid backup')
+  }
+  if (!SUPPORTED_VERSIONS.includes(data?.version) || !Array.isArray(data.expenses)) {
+    throw new Error(`Unsupported backup version: ${data?.version}`)
   }
 
-  // Reconstruct receipt Blobs from data URLs
-  const expenses: Expense[] = await Promise.all(
-    data.expenses.map(async ({ receiptImageDataURL, ...rest }) => {
-      const response = await fetch(receiptImageDataURL)
-      const receiptImage = await response.blob()
-      return { ...rest, receiptImage }
-    })
+  // Decode any v1 embedded images up front — awaiting non-Dexie work inside the
+  // transaction below would close it.
+  const incoming = await Promise.all(
+    data.expenses.map(async ({ receiptImageDataURL, ...rest }) => ({
+      expense: rest,
+      image: receiptImageDataURL ? await (await fetch(receiptImageDataURL)).blob() : undefined,
+    }))
   )
 
   await db.transaction('rw', db.expenses, db.batches, db.categories, db.settings, async () => {
+    // A backup without images must never wipe receipts that live on this device,
+    // in either mode — so capture them before anything is cleared or overwritten.
+    const existing = await db.expenses.bulkGet(incoming.map((i) => i.expense.id))
+    const expenses: Expense[] = incoming.map(({ expense, image }, idx) => {
+      const receiptImage = image ?? existing[idx]?.receiptImage
+      return receiptImage ? { ...expense, receiptImage } : expense
+    })
+
     if (mode === 'replace') {
       await Promise.all([
         db.expenses.clear(),

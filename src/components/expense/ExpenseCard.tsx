@@ -16,7 +16,7 @@ export function ExpenseCard({ expense, batchName, onEdit }: ExpenseCardProps) {
   const [expanded, setExpanded] = useState(false)
 
   async function toggleExpand() {
-    if (!expanded && !imgUrl) {
+    if (!expanded && !imgUrl && expense.receiptImage) {
       const url = await blobToDataURL(expense.receiptImage)
       setImgUrl(url)
     }

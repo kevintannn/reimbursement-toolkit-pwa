@@ -91,8 +91,9 @@ export async function generatePDF(info: BatchInfo, expenses: Expense[]): Promise
   addSummaryPage(doc, info, totals, grandTotal, latinR, latinB, cjkR, cjkB)
   addCategorizedPage(doc, sorted, totals, grandTotal, latinR, latinB, cjkR, cjkB)
 
+  // Expenses restored from an image-free backup have no receipt — skip their page
   for (const exp of sorted) {
-    await addReceiptPage(doc, exp)
+    if (exp.receiptImage) await addReceiptPage(doc, exp.receiptImage)
   }
 
   const bytes = await doc.save()
@@ -242,13 +243,13 @@ function addCategorizedPage(
   page.drawText(formatRupiah(grandTotal), { x: width - margin - 90, y: y - 12, size: 10, font: latinB, color: WHITE })
 }
 
-async function addReceiptPage(doc: PDFDocument, exp: Expense) {
+async function addReceiptPage(doc: PDFDocument, image: Blob) {
   const page = doc.addPage(PageSizes.A4)
   const { width, height } = page.getSize()
   const margin = 20
 
-  const buf = await blobToArrayBuffer(exp.receiptImage)
-  const mimeType = exp.receiptImage.type
+  const buf = await blobToArrayBuffer(image)
+  const mimeType = image.type
 
   try {
     const embeddedImage = mimeType === 'image/png'

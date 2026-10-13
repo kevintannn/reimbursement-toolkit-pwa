@@ -24,7 +24,7 @@ export function EditExpenseModal({ expense, batches, onClose }: Props) {
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    blobToDataURL(expense.receiptImage).then(setImgUrl)
+    if (expense.receiptImage) blobToDataURL(expense.receiptImage).then(setImgUrl)
   }, [expense.receiptImage])
 
   // Lock body scroll while modal open
