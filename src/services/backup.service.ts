@@ -74,11 +74,16 @@ function isIOS(): boolean {
     (navigator.userAgent.includes('Macintosh') && navigator.maxTouchPoints > 1)
 }
 
-// Turns a save failure into a message for the user. iOS refuses the share
-// sheet when any await (like a download) ran between the tap and share().
-export function describeSaveError(err: unknown): string {
+// True when the browser refused a share because the user gesture had already
+// expired (iOS Safari does this once any await runs before share()).
+export function isActivationError(err: unknown): boolean {
   const name = (err as Error)?.name
-  if (name === 'NotAllowedError' || name === 'InvalidStateError') {
+  return name === 'NotAllowedError' || name === 'InvalidStateError'
+}
+
+// Turns a save failure into a message for the user.
+export function describeSaveError(err: unknown): string {
+  if (isActivationError(err)) {
     return 'iPhone blocked saving this file. Download it from your PC instead.'
   }
   return err instanceof Error ? err.message : 'Could not save the file'
